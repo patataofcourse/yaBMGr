@@ -1,6 +1,6 @@
 import binascii
 
-VERSION = "v0"
+VERSION = "v1"
 
 filename = input("File name? ") #TODO: it should be an argparse
 if filename == "":
