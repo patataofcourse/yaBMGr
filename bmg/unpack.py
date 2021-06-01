@@ -1,12 +1,132 @@
 import binascii
 
-filename = input("File name? ") #TODO: it should be an argparse
-if filename == "":
-    filename = "data.Msg/narc_out/tmd_mainroom_msg_JP.bmg"
-file = open(filename, "rb").read()
-
 def unpack(infile, outfile):
-    pass
+    file = open(infile, "rb").read()
+    header = read_header(file[:0x20]) #Always is 0x20 bytes long
+
+    #Some fixes in case the filesize doesn't correspond...
+    if header["size"] > len(file):
+        print("File size declared in the header is bigger than actual file size!")
+        ans = input("Keep old filesize (not recommended), fix the value, or abort BMG reading? (k/f/A) ")
+        if ans == "k":
+            pass
+        elif ans == "f":
+            header["size"] == len(file)
+        else:
+            print("Aborting")
+            quit()
+    elif header["size"] < len(file):
+        print("File size declared in the header is smaller than actual file size!")
+        ans = input("Keep old filesize (not recommended), trim file, fix the value, or abort BMG reading? (k/t/f/A) ")
+        if ans == "k":
+            pass
+        elif ans == "t":
+            file = file[header['size']]
+        elif ans == "f":
+            header["size"] == len(file)
+        else:
+            print("Aborting")
+            quit()
+
+    unread_data = file[0x20:]
+    info = None
+    data = None
+    msg_ids = None
+    for section in range(header["num_sections"]):
+        size = int.from_bytes(unread_data[4:8], "little")
+        stype = unread_data[:4].decode("ASCII")
+        content = unread_data[8:size]
+        if stype == "INF1":
+            if info != None:
+                raise Exception("more than one INF1 section!")
+            info = {
+            "num_entries": int.from_bytes(content[:2], "little"), #has to correspond with MID1{"num_entries"}
+            "entry_size": int.from_bytes(content[2:4], "little"),
+            "group_id": int.from_bytes(content[4:6], "little"),
+            "default_color": content[6],
+            "reserved": content[7],
+            "message_entry": []
+            }
+            content = content[8:]
+            for entry in range(info["num_entries"]):
+                entry = content[0:info["entry_size"]]
+                info["message_entry"].append( (int.from_bytes(entry[:4], "little"), entry[4:]) )
+                content = content[info["entry_size"]:]
+        elif stype == "MID1":
+            if msg_ids != None:
+                raise Exception("more than one MID1 section!")
+            msg_ids = {
+                "num_entries": int.from_bytes(content[:2], "little"), #has to correspond with INF1{"num_entries"}
+                "format": content[2],
+                "info": content[3],
+                "reserved": content[4:8],
+                "reserved_text": "0x" + binascii.hexlify(content[4:8]).decode("ascii"),
+                "ids": []
+            }
+            content = content[8:]
+            for entry in range(msg_ids["num_entries"]):
+                msg_ids["ids"].append(int.from_bytes(content[:4], "little"))
+                content = content[4:]            
+        elif stype == "DAT1":
+            if data != None:
+                raise Exception("more than one DAT1 section!")
+            data = content
+        else:
+            raise Exception(f"unsupported section kind: {stype}")
+        unread_data = unread_data[size:]
+
+    if info == None:
+        raise Exception("INF1 section missing!")
+    if data == None:
+        raise Exception("DAT1 section missing!")
+
+    messages = []
+    for entry in info["message_entry"]:
+        msg = export_string(data, entry[0])
+        if entry[1] == b'':
+            param = None
+        else:
+            param = bytearray(entry[1])
+            param.reverse()
+            param = list(param)
+        messages.append((msg, param))
+
+    if msg_ids != None:
+        if msg_ids["num_entries"] != info["num_entries"]:
+            raise Exception("num_entries doesn't match between the INF1 and MID1")
+        ids = msg_ids["ids"]
+    else:
+        ids = range(len(messages))
+
+    #Here's where we make the actual file
+    out = f'''
+    #Readable BMG file exported by patataofcourse's yaBMGr {VERSION}
+    entry_size = {info["entry_size"]}
+    encoding = {header["encoding"]} #{header["encoding_name"]}
+    mid_exists = {0 if msg_ids == None else 1}
+    reserved = {header["reserved_text"]}
+    reserved_inf = ({info["group_id"]}, {info["default_color"]}, {info["reserved"]})
+    '''.lstrip("\n")
+    if msg_ids != None:
+        out += f'''reserved_mid = ({msg_ids["format"]}, {msg_ids["info"]}, {msg_ids["reserved_text"]})\n'''
+
+    out += "\n@MESSAGES\n"
+
+    c = 0
+    for message in messages:
+        out += f"{ids[c]} {repr(message[1])}\n"
+        for line in message[0].split("\n"):
+            out += "    " + line + "\n"
+        c += 1
+    
+    if outfile == None:
+        if infile.endswith(".bmg"): #TODO: this should only be the default
+            outfile = infile[:-4] + ".rbmg"
+        else:
+            outfile = infile + ".rbmg"
+    outfile = open(outfile, "w")
+    outfile.write(out)
+    outfile.close()
 
 def read_header(header):
     out = {}
@@ -60,132 +180,6 @@ def export_string(pool, pos):
         out += pool[pos:pos+2].decode("UTF-16LE") #Le encoding
         pos += 1
     return out
-
-header = read_header(file[:0x20]) #Always is 0x20 bytes long
-
-#Some fixes in case the filesize doesn't correspond...
-if header["size"] > len(file):
-    print("File size declared in the header is bigger than actual file size!")
-    ans = input("Keep old filesize (not recommended), fix the value, or abort BMG reading? (k/f/A) ")
-    if ans == "k":
-        pass
-    elif ans == "f":
-        header["size"] == len(file)
-    else:
-        print("Aborting")
-        quit()
-elif header["size"] < len(file):
-    print("File size declared in the header is smaller than actual file size!")
-    ans = input("Keep old filesize (not recommended), trim file, fix the value, or abort BMG reading? (k/t/f/A) ")
-    if ans == "k":
-        pass
-    elif ans == "t":
-        file = file[header['size']]
-    elif ans == "f":
-        header["size"] == len(file)
-    else:
-        print("Aborting")
-        quit()
-
-#TODO: read the sections
-unread_data = file[0x20:]
-info = None
-data = None
-msg_ids = None
-for section in range(header["num_sections"]):
-    size = int.from_bytes(unread_data[4:8], "little")
-    stype = unread_data[:4].decode("ASCII")
-    content = unread_data[8:size]
-    if stype == "INF1":
-        if info != None:
-            raise Exception("more than one INF1 section!")
-        info = {
-           "num_entries": int.from_bytes(content[:2], "little"), #has to correspond with MID1{"num_entries"}
-           "entry_size": int.from_bytes(content[2:4], "little"),
-           "group_id": int.from_bytes(content[4:6], "little"),
-           "default_color": content[6],
-           "reserved": content[7],
-           "message_entry": []
-        }
-        content = content[8:]
-        for entry in range(info["num_entries"]):
-            entry = content[0:info["entry_size"]]
-            info["message_entry"].append( (int.from_bytes(entry[:4], "little"), entry[4:]) )
-            content = content[info["entry_size"]:]
-    elif stype == "MID1":
-        if msg_ids != None:
-            raise Exception("more than one MID1 section!")
-        msg_ids = {
-            "num_entries": int.from_bytes(content[:2], "little"), #has to correspond with INF1{"num_entries"}
-            "format": content[2],
-            "info": content[3],
-            "reserved": content[4:8],
-            "reserved_text": "0x" + binascii.hexlify(content[4:8]).decode("ascii"),
-            "ids": []
-        }
-        content = content[8:]
-        for entry in range(msg_ids["num_entries"]):
-            msg_ids["ids"].append(int.from_bytes(content[:4], "little"))
-            content = content[4:]            
-    elif stype == "DAT1":
-        if data != None:
-            raise Exception("more than one DAT1 section!")
-        data = content
-    else:
-        raise Exception(f"unsupported section kind: {stype}")
-    unread_data = unread_data[size:]
-
-if info == None:
-    raise Exception("INF1 section missing!")
-if data == None:
-    raise Exception("DAT1 section missing!")
-
-messages = []
-for entry in info["message_entry"]:
-    msg = export_string(data, entry[0])
-    if entry[1] == b'':
-        param = None
-    else:
-        param = bytearray(entry[1])
-        param.reverse()
-        param = list(param)
-    messages.append((msg, param))
-
-if msg_ids != None:
-    if msg_ids["num_entries"] != info["num_entries"]:
-        raise Exception("num_entries doesn't match between the INF1 and MID1")
-    ids = msg_ids["ids"]
-else:
-    ids = range(len(messages))
-
-#Here's where we make the actual file
-out = f'''
-#Readable BMG file exported by patataofcourse's yaBMGr {VERSION}
-entry_size = {info["entry_size"]}
-encoding = {header["encoding"]} #{header["encoding_name"]}
-mid_exists = {0 if msg_ids == None else 1}
-reserved = {header["reserved_text"]}
-reserved_inf = ({info["group_id"]}, {info["default_color"]}, {info["reserved"]})
-'''.lstrip("\n")
-if msg_ids != None:
-    out += f'''reserved_mid = ({msg_ids["format"]}, {msg_ids["info"]}, {msg_ids["reserved_text"]})\n'''
-
-out += "\n@MESSAGES\n"
-
-c = 0
-for message in messages:
-    out += f"{ids[c]} {repr(message[1])}\n"
-    for line in message[0].split("\n"):
-        out += "    " + line + "\n"
-    c += 1
-
-if filename.endswith(".bmg"): #TODO: this should only be the default
-    outfile = filename[:-4] + ".rbmg"
-else:
-    outfile = filename + ".rbmg"
-outfile = open(outfile, "w")
-outfile.write(out)
-outfile.close()
 
 if __name__ == "__main__":
     unpack(input("Input file? "), input("Output file? "))

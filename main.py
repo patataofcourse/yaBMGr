@@ -13,7 +13,7 @@ def cli():
 @cli.command(   "unpack",
                 help="converts a BMG into the readable format RBMG",
                 no_args_is_help = True,
-                options_metavar='[-o/--output TEXT]'
+                options_metavar='[-o/--output OUTPUT]'
             )
 @click.argument("input")
 @click.option("-o", "--output", default=None)
@@ -23,7 +23,7 @@ def unpack(input, output):
 @cli.command(   "pack",
                 help="converts a RBMG back into Nintendo's BMG",
                 no_args_is_help = True,
-                options_metavar='[-o/--output]'
+                options_metavar='[-o/--output OUTPUT]'
             )
 @click.argument("input")
 @click.option("-o", "--output", default=None)
