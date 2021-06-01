@@ -1,5 +1,5 @@
 def pack(infile, outfile):
-    file = open(infile, "r").read()
+    file = open(infile, "r", encoding="utf-8").read()
     #exclude comments
     lines = []
     messages = False
