@@ -1,32 +1,10 @@
 import binascii
 
+VERSION = "v1" #make sure to update this too!
+
 def unpack(infile, outfile):
     file = open(infile, "rb").read()
     header = read_header(file[:0x20]) #Always is 0x20 bytes long
-
-    #Some fixes in case the filesize doesn't correspond...
-    if header["size"] > len(file):
-        print("File size declared in the header is bigger than actual file size!")
-        ans = input("Keep old filesize (not recommended), fix the value, or abort BMG reading? (k/f/A) ")
-        if ans == "k":
-            pass
-        elif ans == "f":
-            header["size"] == len(file)
-        else:
-            print("Aborting")
-            quit()
-    elif header["size"] < len(file):
-        print("File size declared in the header is smaller than actual file size!")
-        ans = input("Keep old filesize (not recommended), trim file, fix the value, or abort BMG reading? (k/t/f/A) ")
-        if ans == "k":
-            pass
-        elif ans == "t":
-            file = file[header['size']]
-        elif ans == "f":
-            header["size"] == len(file)
-        else:
-            print("Aborting")
-            quit()
 
     unread_data = file[0x20:]
     info = None
@@ -100,13 +78,13 @@ def unpack(infile, outfile):
 
     #Here's where we make the actual file
     out = f'''
-    #Readable BMG file exported by patataofcourse's yaBMGr {VERSION}
-    entry_size = {info["entry_size"]}
-    encoding = {header["encoding"]} #{header["encoding_name"]}
-    mid_exists = {0 if msg_ids == None else 1}
-    reserved = {header["reserved_text"]}
-    reserved_inf = ({info["group_id"]}, {info["default_color"]}, {info["reserved"]})
-    '''.lstrip("\n")
+#Readable BMG file exported by patataofcourse's yaBMGr {VERSION}
+entry_size = {info["entry_size"]}
+encoding = {header["encoding"]} #{header["encoding_name"]}
+mid_exists = {0 if msg_ids == None else 1}
+reserved = {header["reserved_text"]}
+reserved_inf = ({info["group_id"]}, {info["default_color"]}, {info["reserved"]})
+'''.lstrip("\n")
     if msg_ids != None:
         out += f'''reserved_mid = ({msg_ids["format"]}, {msg_ids["info"]}, {msg_ids["reserved_text"]})\n'''
 
@@ -124,7 +102,7 @@ def unpack(infile, outfile):
             outfile = infile[:-4] + ".rbmg"
         else:
             outfile = infile + ".rbmg"
-    outfile = open(outfile, "w")
+    outfile = open(outfile, "w", encoding="utf-8")
     outfile.write(out)
     outfile.close()
 

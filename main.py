@@ -4,7 +4,7 @@ import bmg
 
 VERSION = "v1"
 
-print(f"yaBMGr {VERSION} by patataofcourse")
+click.echo(f"yaBMGr {VERSION} by patataofcourse")
 
 @click.group(help="converts BMG to RBMG and back",options_metavar='')
 def cli():
@@ -18,7 +18,8 @@ def cli():
 @click.argument("input")
 @click.option("-o", "--output", default=None)
 def unpack(input, output):
-    click.echo("test")
+    bmg.unpack(input, output)
+    click.echo("Done!")
 
 @cli.command(   "pack",
                 help="converts a RBMG back into Nintendo's BMG",
@@ -28,7 +29,8 @@ def unpack(input, output):
 @click.argument("input")
 @click.option("-o", "--output", default=None)
 def pack(input, output):
-    click.echo("test")
+    bmg.pack(input, output)
+    click.echo("Done!")
 
 if __name__ == "__main__":
     cli()
