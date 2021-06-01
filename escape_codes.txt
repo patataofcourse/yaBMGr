@@ -1,0 +1,9 @@
+[BIG ENDIAN]
+
+FF 0000 00xx: change color of the text
+  xx = color
+  01 - white
+  06 - pink
+  07 - teal/cyam
+01 0001 00xx: get the name of a Mii referred to in the sentence
+  xx = number of the Mii in the sentence
