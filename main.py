@@ -1,5 +1,7 @@
 import click
 
+import bmg
+
 VERSION = "v1"
 
 print(f"yaBMGr {VERSION} by patataofcourse")

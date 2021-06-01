@@ -1,6 +1,5 @@
-import binascii
-
-VERSION = "v1"
+def pack(infile, outfile):
+    pass
 
 filename = input("File name? ") #TODO: it should be an argparse
 if filename == "":
@@ -192,3 +191,6 @@ outfile.write(data_bin)
 if head["num_blocks"] == 3: #only applies until we add more sections
     outfile.write(mid_bin)
 outfile.close()
+
+if __name__ == "__main__":
+    pack(input("Input file? "), input("Output file? "))

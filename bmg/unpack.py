@@ -1,11 +1,12 @@
 import binascii
 
-VERSION = "v1"
-
 filename = input("File name? ") #TODO: it should be an argparse
 if filename == "":
     filename = "data.Msg/narc_out/tmd_mainroom_msg_JP.bmg"
 file = open(filename, "rb").read()
+
+def unpack(infile, outfile):
+    pass
 
 def read_header(header):
     out = {}
@@ -185,4 +186,6 @@ else:
 outfile = open(outfile, "w")
 outfile.write(out)
 outfile.close()
-print("BMG file exported to rBMG format!")
+
+if __name__ == "__main__":
+    unpack(input("Input file? "), input("Output file? "))
