@@ -1,5 +1,5 @@
 # yaBMGr (Yet Another BMG Reader)
-For DS games. Currently only supports UTF-16LE, and reads files in little endian. (trying to make it not suck, hold on)
+Made specifically for DS games. Currently only supports UTF-16LE, and reads files in little endian (because DS).
 
 ## Requirements:
 * click
